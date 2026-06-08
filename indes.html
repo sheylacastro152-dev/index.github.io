@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Inventario</title>
+  <meta name="theme-color" content="#4f46e5" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --primary:#4f46e5;
+      --primary-2:#4338ca;
+      --success:#059669;
+      --danger:#dc2626;
+      --warning:#d97706;
+      --info:#0284c7;
+      --shadow:0 12px 30px rgba(15,23,42,.08);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg,#eef2ff 0%, #f8fafc 18%, var(--bg) 100%);
+      color:var(--text);
+    }
+    .container{max-width:1500px;margin:0 auto;padding:18px}
+    .topbar{
+      display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+      background: rgba(255,255,255,.82); backdrop-filter: blur(10px);
+      border:1px solid rgba(255,255,255,.8);
+      box-shadow:var(--shadow);
+      border-radius:var(--radius);
+      padding:18px 20px;
+    }
+    .brand{display:flex;align-items:center;gap:14px;min-width:280px}
+    .logo{
+      width:52px;height:52px;border-radius:18px;
+      display:grid;place-items:center;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color:white;font-size:1.6rem;box-shadow:0 10px 25px rgba(79,70,229,.25);
+      flex:0 0 auto;
+    }
+    h1{margin:0;font-size:1.45rem;line-height:1.1}
+    .subtitle{color:var(--muted);font-size:.92rem;margin-top:4px}
+    .status-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pill{
+      border-radius:999px;padding:8px 12px;font-size:.82rem;font-weight:700;
+      background:#eef2ff;color:#3730a3;border:1px solid #e0e7ff;
+    }
+    .pill.ok{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+    .pill.warn{background:#fef3c7;color:#92400e;border-color:#fde68a}
+    .pill.info{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+
+    .toolbar{
+      display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;
+      background: rgba(255,255,255,.65);
+      border:1px solid rgba(255,255,255,.75);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+    }
+    .btn{
+      border:none;border-radius:14px;padding:11px 16px;font-weight:700;
+      cursor:pointer;transition:.18s ease; color:white;
+      display:inline-flex;align-items:center;gap:8px;justify-content:center;
+      box-shadow:0 8px 18px rgba(15,23,42,.08);
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--primary)}
+    .btn-primary:hover{background:var(--primary-2)}
+    .btn-success{background:var(--success)}
+    .btn-danger{background:var(--danger)}
+    .btn-dark{background:#111827}
+    .btn-info{background:var(--info)}
+    .btn-light{background:#ffffff;color:#111827;border:1px solid var(--line)}
+    .btn-warning{background:var(--warning)}
+
+    .grid-cards{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap:14px;
+      margin-top:16px;
+    }
+    .metric{
+      background:var(--card);
+      border:1px solid rgba(229,231,235,.8);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+      min-height:112px;
+    }
+    .metric .label{font-size:.86rem;color:var(--muted);margin-bottom:10px}
+    .metric .value{font-size:1.65rem;font-weight:800}
+    .metric .note{font-size:.82rem;color:var(--muted);margin-top:6px}
+
+    .layout{
+      display:grid;
+      grid-template-columns: 2fr 1fr;
+      gap:16px;
+      margin-top:16px;
+      align-items:start;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid rgba(229,231,235,.8);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+      overflow:hidden;
+    }
+    .section-head{
+      display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .section-head h2{margin:0;font-size:1.15rem}
+    .small{font-size:.85rem;color:var(--muted);margin-top:4px}
+    .footer-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+    .scanner-panel{
+      display:none;
+      margin: 12px 0 14px;
+      padding:14px;
+      border-radius:18px;
+      background: #f8fafc;
+      border:1px dashed #cbd5e1;
+    }
+    #reader{
+      width:100%;
+      max-width:520px;
+      margin:0 auto;
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .scanner-actions{
+      display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .scanner-note{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:.9rem;
+      line-height:1.5;
+      background:#fff;
+      border:1px solid var(--line);
+      padding:12px;
+      border-radius:14px;
+    }
+
+    .table-wrap{width:100%;overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:980px}
+    th,td{
+      border-bottom:1px solid var(--line);
+      padding:12px 10px;
+      text-align:left;
+      font-size:.92rem;
+      vertical-align:top;
+    }
+    th{
+      position:sticky;top:0;
+      background:#f9fafb;
+      color:#4b5563;
+      font-size:.8rem;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      z-index:1;
+    }
+    tr:hover td{background:#fafafa}
+    .badge{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:5px 10px;border-radius:999px;font-size:.74rem;font-weight:800;
+      white-space:nowrap;
+    }
+    .badge.ingreso{background:#dcfce7;color:#166534}
+    .badge.salida{background:#fee2e2;color:#991b1b}
+    .badge.alta{background:#e0e7ff;color:#3730a3}
+    .badge.stock-ok{background:#dcfce7;color:#166534}
+    .badge.stock-low{background:#fef3c7;color:#92400e}
+    .badge.stock-out{background:#fee2e2;color:#991b1b}
+    .code{font-weight:800}
+    .money{font-weight:800}
+    .muted{color:var(--muted)}
+    .empty{
+      padding:20px;
+      text-align:center;
+      color:var(--muted);
+      background:#fafafa;
+      border:1px dashed var(--line);
+      border-radius:16px;
+    }
+
+    @media (max-width: 1200px){
+      .grid-cards{grid-template-columns:repeat(3, minmax(0,1fr))}
+      .layout{grid-template-columns:1fr}
+    }
+    @media (max-width: 720px){
+      .container{padding:12px}
+      .topbar, .toolbar, .card, .metric{border-radius:18px}
+      .grid-cards{grid-template-columns:repeat(2, minmax(0,1fr))}
+      h1{font-size:1.2rem}
+      table{min-width:860px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">📦</div>
+        <div>
+          <h1>Sistema de Inventario</h1>
+          <div class="subtitle">Control de productos, entradas, salidas, QR y respaldo de datos</div>
+        </div>
+      </div>
+      <div class="status-row">
+        <span id="statePill" class="pill ok">● Listo</span>
+        <span id="securePill" class="pill warn">Cámara: revisar</span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="abrirFormularioProducto()">➕ Nuevo producto</button>
+      <button class="btn btn-dark" onclick="abrirMovimiento('INGRESO')">📥 Registrar ingreso</button>
+      <button class="btn btn-danger" onclick="abrirMovimiento('SALIDA')">📤 Registrar salida</button>
+      <button class="btn btn-success" onclick="exportarBackupJSON()">⬇️ Backup JSON</button>
+      <button class="btn btn-warning" onclick="exportarCSV()">📊 Exportar CSV</button>
+      <button class="btn btn-light" onclick="importarBackup()">📥 Restaurar backup</button>
+      <input id="importFile" type="file" accept="application/json,.json" style="display:none" />
+    </div>
+
+    <div class="grid-cards">
+      <div class="metric">
+        <div class="label">Productos</div>
+        <div class="value" id="kpiProductos">0</div>
+        <div class="note">Ítems únicos registrados</div>
+      </div>
+      <div class="metric">
+        <div class="label">Unidades en stock</div>
+        <div class="value" id="kpiStock">0</div>
+        <div class="note">Suma de existencias</div>
+      </div>
+      <div class="metric">
+        <div class="label">Valor total</div>
+        <div class="value" id="kpiValor">S/ 0.00</div>
+        <div class="note">Stock × precio</div>
+      </div>
+      <div class="metric">
+        <div class="label">Entradas</div>
+        <div class="value" id="kpiEntradas">0</div>
+        <div class="note">Movimientos de ingreso</div>
+      </div>
+      <div class="metric">
+        <div class="label">Salidas</div>
+        <div class="value" id="kpiSalidas">0</div>
+        <div class="note">Movimientos de salida</div>
+      </div>
+      <div class="metric">
+        <div class="label">Bajo stock</div>
+        <div class="value" id="kpiBajoStock">0</div>
+        <div class="note">Productos con mínimo alcanzado</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Inventario actual</h2>
+            <div class="small">Productos ordenados y listos para trabajar</div>
+          </div>
+          <div class="footer-actions">
+            <button class="btn btn-info" onclick="abrirScanner()">📷 Escanear QR</button>
+            <button class="btn btn-warning" onclick="document.getElementById('qrImageInput').click()">🖼️ Subir imagen QR</button>
+            <input id="qrImageInput" type="file" accept="image/*" style="display:none">
+          </div>
+        </div>
+
+        <div id="scannerContainer" class="scanner-panel">
+          <div id="reader"></div>
+          <div class="scanner-actions">
+            <button class="btn btn-danger" onclick="cerrarScanner()">✖ Cerrar lector</button>
+          </div>
+          <div class="scanner-note" id="scannerNote">
+            Asegúrate de conceder los permisos de cámara a tu navegador.
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Marca</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-productos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2>Historial de movimientos</h2>
+            <div class="small">Entradas, salidas, altas y ajustes</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table style="min-width:0">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Detalle</th>
+                <th>Cantidad</th>
+                <th>Fecha y hora</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-movimientos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_PRODUCTS = "inventario_pro_v23_productos";
+    const STORAGE_MOVS = "inventario_pro_v23_movimientos";
+    const LOW_STOCK_DEFAULT = 5;
+
+    // Corrección crítica: Se cambiaron las comillas problemáticas en Laptop y Monitor
+    const seededProducts = [
+      { codigo: "PC-001", producto: "Computadora de escritorio", categoria: "Computación", marca: "Genérica", precio: 1850, stock: 6, minimo: 3 },
+      { codigo: "LP-001", producto: 'Laptop 15.6"', categoria: "Computación", marca: "Lenovo", precio: 2790, stock: 4, minimo: 2 },
+      { codigo: "MS-001", producto: "Mouse inalámbrico", categoria: "Periféricos", marca: "Logitech", precio: 55, stock: 20, minimo: 10 },
+      { codigo: "MN-001", producto: 'Monitor 24"', categoria: "Pantallas", marca: "AOC", precio: 620, stock: 8, minimo: 3 }
+    ];
+
+    let productos = loadProducts();
+    let movimientos = JSON.parse(localStorage.getItem(STORAGE_MOVS) || "[]");
+    let scanner = null;
+    let scannerActive = false;
+
+    function uid() {
+      return "MV-" + Date.now().toString(36).toUpperCase();
+    }
+
+    function loadProducts() {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || "null");
+      if (Array.isArray(saved) && saved.length) return saved;
+      return seededProducts.map(p => ({
+        ...p,
+        minimo: Number.isFinite(p.minimo) ? p.minimo : LOW_STOCK_DEFAULT,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(productos));
+      localStorage.setItem(STORAGE_MOVS, JSON.stringify(movimientos));
+    }
+
+    function money(n) {
+      return `S/ ${Number(n || 0).toFixed(2)}`;
+    }
+
+    function formatDate(iso) {
+      try {
+        return new Date(iso).toLocaleString("es-PE", {
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit"
+        });
+      } catch { return iso || ""; }
+    }
+
+    function tipoBadge(tipo) {
+      if (tipo === "INGRESO") return "badge ingreso";
+      if (tipo === "SALIDA") return "badge salida";
+      return "badge alta";
+    }
+
+    function stockBadge(p) {
+      if (Number(p.stock) <= 0) return "badge stock-out";
+      if (Number(p.stock) <= Number(p.minimo || LOW_STOCK_DEFAULT)) return "badge stock-low";
+      return "badge stock-ok";
+    }
+
+    function updatePills() {
+      const securePill = document.getElementById("securePill");
+      const secure = window.isSecureContext || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      securePill.textContent = secure ? "Cámara: lista" : "Cámara: HTTPS/localhost recomendado";
+      securePill.className = "pill " + (secure ? "ok" : "warn");
+
+      const statePill = document.getElementById("statePill");
+      statePill.textContent = scannerActive ? "● Escáner activo" : "● Listo";
+      statePill.className = "pill " + (scannerActive ? "info" : "ok");
+    }
+
+    function kpis() {
+      const totalProductos = productos.length;
+      const totalStock = productos.reduce((a, p) => a + (Number(p.stock) || 0), 0);
+      const totalValor = productos.reduce((a, p) => a + ((Number(p.stock) || 0) * (Number(p.precio) || 0)), 0);
+      const entradas = movimientos.filter(m => m.tipo === "INGRESO").reduce((a, m) => a + (Number(m.cantidad) || 0), 0);
+      const salidas = movimientos.filter(m => m.tipo === "SALIDA").reduce((a, m) => a + (Number(m.cantidad) || 0), 0);
+      const bajoStock = productos.filter(p => Number(p.stock) <= Number(p.minimo || LOW_STOCK_DEFAULT)).length;
+
+      document.getElementById("kpiProductos").textContent = totalProductos;
+      document.getElementById("kpiStock").textContent = totalStock;
+      document.getElementById("kpiValor").textContent = money(totalValor);
+      document.getElementById("kpiEntradas").textContent = entradas;
+      document.getElementById("kpiSalidas").textContent = salidas;
+      document.getElementById("kpiBajoStock").textContent = bajoStock;
+    }
+
+    function renderProductos() {
+      const tbody = document.getElementById("tbody-productos");
+      tbody.innerHTML = "";
+      if (!productos.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty">No hay productos registrados.</div></td></tr>`;
+        return;
+      }
+
+      productos.forEach((p) => {
+        const total = (Number(p.stock) || 0) * (Number(p.precio) || 0);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="code">${escapeHtml(p.codigo || "")}</td>
+          <td>${escapeHtml(p.producto || "")}</td>
+          <td>${escapeHtml(p.categoria || "General")}</td>
+          <td>${escapeHtml(p.marca || "—")}</td>
+          <td class="money">${money(p.precio)}</td>
+          <td><span class="${stockBadge(p)}">${Number(p.stock) || 0}</span></td>
+          <td class="money">${money(total)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderMovimientos() {
+      const tbody = document.getElementById("tbody-movimientos");
+      tbody.innerHTML = "";
+      if (!movimientos.length) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty">Todavía no hay movimientos registrados.</div></td></tr>`;
+        return;
+      }
+
+      [...movimientos].reverse().forEach(m => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="${tipoBadge(m.tipo)}">${escapeHtml(m.tipo)}</span></td>
+          <td><strong>${escapeHtml(m.producto || m.detalle || "")}</strong><br><span class="muted">${escapeHtml(m.codigo || "")}</span></td>
+          <td>${Number(m.cantidad || 0)}</td>
+          <td class="muted">${formatDate(m.fechaHora)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function render() {
+      kpis();
+      renderProductos();
+      renderMovimientos();
+      saveData();
+      updatePills();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function abrirFormularioProducto(prefill = {}) {
+      const { value: v } = await Swal.fire({
+        title: prefill.codigo ? "Registrar producto desde QR" : "Nuevo producto",
+        html: `
+          <input id="sw-codigo" class="swal2-input" placeholder="Código" value="${escapeHtml(prefill.codigo || "")}">
+          <input id="sw-producto" class="swal2-input" placeholder="Producto" value="${escapeHtml(prefill.producto || "")}">
+          <input id="sw-categoria" class="swal2-input" placeholder="Categoría" value="${escapeHtml(prefill.categoria || "General")}">
+          <input id="sw-marca" class="swal2-input" placeholder="Marca" value="${escapeHtml(prefill.marca || "")}">
+          <input id="sw-precio" type="number" step="0.01" class="swal2-input" placeholder="Precio" value="${Number(prefill.precio || 0)}">
+          <input id="sw-stock" type="number" min="0" class="swal2-input" placeholder="Stock" value="${Number(prefill.stock || 0)}">
+          <input id="sw-minimo" type="number" min="0" class="swal2-input" placeholder="Stock mínimo" value="${Number(prefill.minimo || LOW_STOCK_DEFAULT)}">
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Guardar",
+        preConfirm: () => {
+          const codigo = document.getElementById("sw-codigo").value.trim();
+          const producto = document.getElementById("sw-producto").value.trim();
+          if (!codigo || !producto) {
+            Swal.showValidationMessage("El código y el producto son obligatorios");
+            return false;
+          }
+          return {
+            codigo,
+            producto,
+            categoria: document.getElementById("sw-categoria").value.trim() || "General",
+            marca: document.getElementById("sw-marca").value.trim(),
+            precio: Number(document.getElementById("sw-precio").value || 0),
+            stock: Math.max(0, Number(document.getElementById("sw-stock").value || 0)),
+            minimo: Math.max(0, Number(document.getElementById("sw-minimo").value || LOW_STOCK_DEFAULT))
+          };
+        }
+      });
+
+      if (!v) return;
+
+      const idx = productos.findIndex(p => p.codigo.toLowerCase() === v.codigo.toLowerCase());
+      if (idx >= 0) {
+        productos[idx] = { ...productos[idx], ...v, updatedAt: new Date().toISOString() };
+        movimientos.push({ id: uid(), tipo: "ALTA", codigo: v.codigo, producto: v.producto, cantidad: v.stock, fechaHora: new Date().toISOString(), detalle: "Producto actualizado" });
+        Swal.fire("Actualizado", "El producto fue actualizado correctamente.", "success");
+      } else {
+        productos.push({ ...v, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        movimientos.push({ id: uid(), tipo: "ALTA", codigo: v.codigo, producto: v.producto, cantidad: v.stock, fechaHora: new Date().toISOString(), detalle: "Nuevo producto" });
+        Swal.fire("Guardado", "El producto fue registrado correctamente.", "success");
+      }
+      render();
+    }
+
+    async function abrirMovimiento(tipo) {
+      if (!productos.length) {
+        Swal.fire("Aviso", "Primero registra al menos un producto.", "info");
+        return;
+      }
+
+      const options = productos.map((p, i) => `<option value="${i}">${escapeHtml(p.codigo)} - ${escapeHtml(p.producto)}</option>`).join("");
+      const { value: v } = await Swal.fire({
+        title: tipo === "INGRESO" ? "Registrar ingreso" : "Registrar salida",
+        html: `<select id="sw-prod" class="swal2-select" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:12px">${options}</select>
+               <input id="sw-cant" type="number" min="1" class="swal2-input" placeholder="Cantidad" value="1">`,
+        showCancelButton: true,
+        confirmButtonText: "Confirmar",
+        preConfirm: () => ({ index: Number(document.getElementById("sw-prod").value), cantidad: Number(document.getElementById("sw-cant").value) })
+      });
+
+      if (!v || !v.cantidad || v.cantidad < 1) return;
+      const p = productos[v.index];
+      if (!p) return;
+
+      if (tipo === "SALIDA" && v.cantidad > Number(p.stock)) {
+        Swal.fire("Error", "No hay suficiente stock para esa salida.", "error");
+        return;
+      }
+
+      p.stock = tipo === "INGRESO" ? Number(p.stock) + v.cantidad : Number(p.stock) - v.cantidad;
+      p.updatedAt = new Date().toISOString();
+      movimientos.push({ id: uid(), tipo, codigo: p.codigo, producto: p.producto, cantidad: v.cantidad, fechaHora: new Date().toISOString(), detalle: `${tipo === "INGRESO" ? "Entrada" : "Salida"} manual` });
+
+      Swal.fire("Listo", `${tipo === "INGRESO" ? "Ingresaron" : "Salieron"} ${v.cantidad} unidades.`, "success");
+      render();
+    }
+
+    function normalizarQR(texto) {
+      try {
+        const obj = JSON.parse(texto);
+        return {
+          codigo: String(obj.codigo || "").trim(),
+          producto: String(obj.producto || "").trim(),
+          categoria: String(obj.categoria || "General").trim(),
+          marca: String(obj.marca || "").trim(),
+          precio: Number(obj.precio || 0),
+          stock: Number(obj.stock || 0),
+          minimo: Number(obj.minimo || LOW_STOCK_DEFAULT)
+        };
+      } catch {
+        return { codigo: String(texto || "").trim() };
+      }
+    }
+
+    async function onScan(texto) {
+      const data = normalizarQR(texto);
+      if (!data.codigo) return;
+
+      cerrarScanner(); // Cerramos la cámara al detectar
+
+      const index = productos.findIndex(p => p.codigo.toLowerCase() === data.codigo.toLowerCase());
+
+      if (index >= 0) {
+        const p = productos[index];
+        const { isConfirmed, isDenied } = await Swal.fire({
+          title: "Producto encontrado",
+          html: `<strong>${escapeHtml(p.producto)}</strong><br>Código: ${escapeHtml(p.codigo)}<br>Stock actual: <strong>${Number(p.stock) || 0}</strong>`,
+          icon: "success",
+          showDenyButton: true,
+          showCancelButton: true,
+          confirmButtonText: "Registrar ingreso",
+          denyButtonText: "Registrar salida",
+          cancelButtonText: "Cancelar"
+        });
+
+        if (isConfirmed || isDenied) {
+          const tipoAccion = isConfirmed ? "ingresar" : "retirar";
+          const { value } = await Swal.fire({
+            title: `Cantidad a ${tipoAccion}`,
+            input: "number",
+            inputAttributes: { min: 1 },
+            inputValue: 1,
+            showCancelButton: true
+          });
+          
+          if (value && Number(value) > 0) {
+            if (isDenied && Number(value) > Number(p.stock)) {
+              Swal.fire("Error", "No hay suficiente stock.", "error");
+              return;
+            }
+            p.stock = isConfirmed ? p.stock + Number(value) : p.stock - Number(value);
+            p.updatedAt = new Date().toISOString();
+            movimientos.push({
+              id: uid(),
+              tipo: isConfirmed ? "INGRESO" : "SALIDA",
+              codigo: p.codigo,
+              producto: p.producto,
+              cantidad: Number(value),
+              fechaHora: new Date().toISOString(),
+              detalle: isConfirmed ? "Ingreso desde QR" : "Salida desde QR"
+            });
+            render();
+            Swal.fire("Éxito", `Movimiento de ${tipoAccion} registrado correctamente.`, "success");
+          }
+        }
+        return;
+      }
+
+      if (data.producto) {
+        const { isConfirmed } = await Swal.fire({
+          title: "QR de nuevo producto",
+          html: `Se detectó <strong>${escapeHtml(data.producto)}</strong>.<br>¿Deseas registrarlo ahora?`,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "Sí, registrar"
+        });
+        if (isConfirmed) abrirFormularioProducto(data);
+      } else {
+        const { isConfirmed } = await Swal.fire({
+          title: "Código no registrado",
+          text: `El código "${data.codigo}" no existe todavía. ¿Deseas crear el producto?`,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "Sí, crear"
+        });
+        if (isConfirmed) abrirFormularioProducto({ codigo: data.codigo });
+      }
+    }
+
+    // --- MANEJO DE CÁMARA Y ARCHIVOS QR UNIFICADO ---
+    
+    async function abrirScanner() {
+      document.getElementById("scannerContainer").style.display = "block";
+      scannerActive = true;
+      updatePills();
+
+      try {
+        // Pedimos permiso de cámara explícitamente antes de usar la librería para evitar cuelgues
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        
+        if (!scanner) scanner = new Html5Qrcode("reader");
+        const cameras = await Html5Qrcode.getCameras();
+        
+        if (!cameras || !cameras.length) {
+          Swal.fire("Sin cámara", "No se detectó ninguna cámara disponible.", "error");
+          return;
+        }
+        const preferred = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
+        
+        await scanner.start(
+          { deviceId: { exact: preferred.id } },
+          { fps: 12, qrbox: { width: 250, height: 250 } },
+          (decodedText) => onScan(decodedText),
+          () => {} // Ignorar errores de frame vacío
+        );
+      } catch (err) {
+        console.error("Error de cámara:", err);
+        cerrarScanner();
+        Swal.fire("Cámara bloqueada", "Debes otorgar permisos de cámara en tu navegador o usar el entorno seguro HTTPS/localhost.", "warning");
+      }
+    }
+
+    async function cerrarScanner() {
+      const container = document.getElementById("scannerContainer");
+      container.style.display = "none";
+      scannerActive = false;
+      updatePills();
+      try {
+        if (scanner && scanner.isScanning) {
+          await scanner.stop();
+          scanner.clear();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Subida de imagen QR
+    document.getElementById('qrImageInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        if (!scanner) scanner = new Html5Qrcode("reader");
+        const result = await scanner.scanFile(file, true);
+        onScan(result);
+      } catch (err) {
+        Swal.fire('No detectado', 'No se pudo leer ningún código QR en la imagen proporcionada. Intenta con una imagen más clara.', 'error');
+      } finally {
+        e.target.value = ""; // Limpiar el input para permitir volver a subir la misma foto si se desea
+      }
+    });
+
+    // --- IMPORTAR / EXPORTAR ---
+
+    function exportarBackupJSON() {
+      const payload = { version: "2.3-profesional", exportedAt: new Date().toISOString(), productos, movimientos };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `backup_inventario_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    function importarBackup() { document.getElementById("importFile").click(); }
+
+    document.getElementById("importFile").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!Array.isArray(data.productos) || !Array.isArray(data.movimientos)) {
+          Swal.fire("Formato inválido", "El archivo no parece un backup válido.", "error"); return;
+        }
+        const { isConfirmed } = await Swal.fire({
+          title: "Restaurar backup", text: "Se reemplazarán los datos actuales.", icon: "warning",
+          showCancelButton: true, confirmButtonText: "Restaurar"
+        });
+        if (!isConfirmed) return;
+        productos = data.productos; movimientos = data.movimientos;
+        saveData(); render();
+        Swal.fire("Restaurado", "El backup se cargó correctamente.", "success");
+      } catch (err) {
+        Swal.fire("Error", "No se pudo leer el archivo de backup.", "error");
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    function exportarCSV() {
+      const lines = ["INVENTARIO ACTUAL", "Codigo;Producto;Categoria;Marca;Precio;Stock;Minimo;Total"];
+      productos.forEach(p => {
+        lines.push([ p.codigo, p.producto, p.categoria || "", p.marca || "", Number(p.precio || 0).toFixed(2), Number(p.stock || 0), Number(p.minimo || LOW_STOCK_DEFAULT), ((Number(p.stock) || 0) * (Number(p.precio) || 0)).toFixed(2) ].join(";"));
+      });
+      lines.push("", "HISTORIAL", "Tipo;Codigo;Producto;Cantidad;FechaHora");
+      movimientos.forEach(m => {
+        lines.push([ m.tipo || "", m.codigo || "", m.producto || "", Number(m.cantidad || 0), m.fechaHora || "" ].join(";"));
+      });
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `inventario_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    window.addEventListener("beforeunload", () => {
+      saveData();
+      if (scannerActive) cerrarScanner();
+    });
+
+    window.addEventListener("load", () => {
+      productos = productos.map(p => ({ minimo: LOW_STOCK_DEFAULT, ...p }));
+      render();
+      updatePills();
+    });
+  </script>
+</body>
+</html>
